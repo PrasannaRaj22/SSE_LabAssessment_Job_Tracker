@@ -1,0 +1,48 @@
+# 1. Deployment: Manages the application container
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jobtracker-deployment
+  labels:
+    app: jobtracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jobtracker
+  template:
+    metadata:
+      labels:
+        app: jobtracker
+    spec:
+      # 1. SET FS GROUP (REQUIRED TO MAKE THE VOLUME WRITEABLE BY THE NON-ROOT GROUP)
+      securityContext:
+        fsGroup: 1000 # Use 1000 if that is the GID used for appuser_group
+      containers:
+      - name: jobtracker
+        image: jobtracker:lab 
+        imagePullPolicy: Never
+        ports:
+        # ...
+        # 2. MOUNT THE VOLUME
+        volumeMounts:
+        - name: django-db-storage
+          mountPath: /app/ # Mounts the volume to the WORKDIR, where db.sqlite3 lives
+
+      volumes:
+      - name: django-db-storage
+        emptyDir: {} 
+---
+# 2. Service: Exposes the deployment externally
+apiVersion: v1
+kind: Service
+metadata:
+  name: jobtracker-service
+spec:
+  selector:
+    app: jobtracker
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: NodePort
